@@ -22,19 +22,13 @@ body {
     display: none;
 }
 
-.title {
-    display: none;
-}
-
-.model-name {
-    display: none;
-}
-
 .progress-container {
     flex: 1;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 1rem;
 }
 
 .progress-bar {
@@ -43,7 +37,9 @@ body {
 
 #progress-text {
     font-size: 0.875rem;
-    color: #999;
+    color: #666;
+    text-align: center;
+    padding: 1rem;
 }
 
 .chat-container {

@@ -2,32 +2,20 @@ import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
 let engine = null;
 
-// UI elements
-const modelName = document.getElementById("model-name");
-const progressContainer = document.getElementById("progress-container");
-const progressBar = document.getElementById("progress-bar");
-const progressText = document.getElementById("progress-text");
-const chatContainer = document.getElementById("chat-container");
-const chatBox = document.getElementById("chat-box");
-const userInput = document.getElementById("user-input");
-const sendBtn = document.getElementById("send-btn");
-
-// Custom model config with GGUF URL
-const customModel = {
-  model: "https://huggingface.co/mradermacher/SmolLM-135M-GGUF/resolve/main/SmolLM-135M.Q4_K_M.gguf",
-  model_id: "SmolLM-135M-Q4",
-  model_lib: webllm.prebuiltAppConfig.model_list.find(m => m.model_id.includes("SmolLM"))?.model_lib ||
-             "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_46/SmolLM-135M-q4f16_1-ctx768_cs1k-webgpu.wasm",
-};
-
 // Auto-download on page load
 (async () => {
-  progressText.textContent = "Initializing...";
+  const progressText = document.getElementById("progress-text");
+  const progressContainer = document.getElementById("progress-container");
+  const chatContainer = document.getElementById("chat-container");
+
+  if (progressText) {
+    progressText.textContent = "Initializing...";
+  }
 
   const initProgressCallback = (progress) => {
-    const percentage = Math.round(progress.progress * 100);
-    progressBar.style.setProperty('--progress', `${percentage}%`);
-    progressText.textContent = progress.text;
+    if (progressText) {
+      progressText.textContent = progress.text;
+    }
   };
 
   try {
@@ -35,26 +23,43 @@ const customModel = {
       initProgressCallback: initProgressCallback,
     });
 
-    modelName.textContent = "SmolLM2-135M";
-    progressContainer.classList.add("hidden");
-    chatContainer.classList.remove("hidden");
-    userInput.focus();
+    if (progressContainer) progressContainer.classList.add("hidden");
+    if (chatContainer) chatContainer.classList.remove("hidden");
+
+    const userInput = document.getElementById("user-input");
+    if (userInput) userInput.focus();
   } catch (error) {
-    progressText.textContent = `Error: ${error.message}`;
+    if (progressText) {
+      progressText.textContent = `Error: ${error.message}`;
+    }
     console.error(error);
   }
 })();
 
 // Handle chat
-sendBtn.addEventListener("click", sendMessage);
-userInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendMessage();
-  }
-});
+const sendBtn = document.getElementById("send-btn");
+const userInput = document.getElementById("user-input");
+
+if (sendBtn) {
+  sendBtn.addEventListener("click", sendMessage);
+}
+
+if (userInput) {
+  userInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
 
 async function sendMessage() {
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
+  const chatBox = document.getElementById("chat-box");
+
+  if (!userInput || !sendBtn || !chatBox) return;
+
   const message = userInput.value.trim();
   if (!message || !engine) return;
 
@@ -91,6 +96,9 @@ async function sendMessage() {
 }
 
 function addMessage(text, type) {
+  const chatBox = document.getElementById("chat-box");
+  if (!chatBox) return;
+
   const messageDiv = document.createElement("div");
   messageDiv.className = `message ${type}`;
   messageDiv.textContent = text;
