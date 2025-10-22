@@ -1,0 +1,19 @@
+{
+  "name": "openscad-browser-renderer",
+  "version": "1.0.0",
+  "description": "Native OpenSCAD renderer in the browser using WebAssembly",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "openscad",
+    "wasm",
+    "3d",
+    "cad"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "openscad-wasm-prebuilt": "^1.2.0"
+  }
+}

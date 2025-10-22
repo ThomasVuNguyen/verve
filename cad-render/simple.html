@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSCAD Browser Renderer - Simple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background: #252526;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #3e3e42;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 0.75rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0e639c;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1177bb;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .editor-panel, .viewer-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-panel {
+            border-right: 1px solid #3e3e42;
+        }
+
+        textarea {
+            flex: 1;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: none;
+            tab-size: 4;
+        }
+
+        textarea:focus {
+            outline: none;
+        }
+
+        #viewer {
+            flex: 1;
+            background: #1e1e1e;
+        }
+
+        #status {
+            padding: 0.75rem 1rem;
+            background: #2d2d30;
+            border-top: 1px solid #3e3e42;
+            font-size: 0.9rem;
+        }
+
+        #status.error {
+            background: #5a1d1d;
+            color: #f48771;
+        }
+
+        #status.success {
+            background: #1e3a1e;
+            color: #89d185;
+        }
+
+        #status.info {
+            background: #1e3a3a;
+            color: #6cb6ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>OpenSCAD Browser Renderer</h1>
+            <div class="controls">
+                <button id="renderBtn" class="btn btn-primary">Render (Ctrl+Enter)</button>
+                <button id="exportBtn" class="btn btn-primary">Export STL</button>
+                <button id="resetViewBtn" class="btn btn-primary">Reset View</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="editor-panel">
+                <textarea id="editor" spellcheck="false">// OpenSCAD Code
+// Full native OpenSCAD support!
+
+module box(width, depth, height) {
+    cube([width, depth, height]);
+}
+
+box(10, 20, 30);
+
+translate([40, 0, 0])
+    sphere(r=15, $fn=50);
+
+translate([-40, 0, 0])
+    cylinder(h=30, r=10, $fn=50);
+</textarea>
+                <div id="status">Ready. Click Render or press Ctrl+Enter.</div>
+            </div>
+
+            <div class="viewer-panel">
+                <div id="viewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script type="module">
+        // Import OpenSCAD worker wrapper
+        import { renderOpenSCAD } from './openscad-simple.js';
+
+        let scene, camera, renderer, controls, currentMesh;
+
+        function initThreeJS() {
+            const viewerContainer = document.getElementById('viewer');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1e1e1e);
+
+            camera = new THREE.PerspectiveCamera(45, viewerContainer.clientWidth / viewerContainer.clientHeight, 0.1, 1000);
+            camera.position.set(100, 100, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(viewerContainer.clientWidth, viewerContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            viewerContainer.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+
+            const gridHelper = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            const axesHelper = new THREE.AxesHelper(50);
+            scene.add(axesHelper);
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const viewerContainer = document.getElementById('viewer');
+            camera.aspect = viewerContainer.clientWidth / viewerContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(viewerContainer.clientWidth, viewerContainer.clientHeight);
+        }
+
+        async function render() {
+            const code = document.getElementById('editor').value;
+            const statusEl = document.getElementById('status');
+
+            try {
+                statusEl.className = 'status info';
+                statusEl.textContent = 'Rendering with OpenSCAD...';
+
+                const stlData = await renderOpenSCAD(code);
+
+                // Load STL
+                if (currentMesh) {
+                    scene.remove(currentMesh);
+                }
+
+                const loader = new THREE.STLLoader();
+                const geometry = loader.parse(stlData);
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x4a90e2,
+                    shininess: 30
+                });
+
+                currentMesh = new THREE.Mesh(geometry, material);
+                scene.add(currentMesh);
+
+                // Center camera on object
+                const box = new THREE.Box3().setFromObject(currentMesh);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 2;
+
+                camera.position.set(cameraZ, cameraZ, cameraZ);
+                camera.lookAt(center);
+                controls.target.copy(center);
+                controls.update();
+
+                statusEl.className = 'status success';
+                const triangles = geometry.attributes.position.count / 3;
+                statusEl.textContent = `Rendered successfully! ${triangles.toLocaleString()} triangles`;
+
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = `Error: ${error.message}`;
+                console.error(error);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('renderBtn').addEventListener('click', render);
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            camera.position.set(100, 100, 100);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                render();
+            }
+        });
+
+        // Initialize
+        initThreeJS();
+    </script>
+</body>
+</html>
